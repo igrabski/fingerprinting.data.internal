@@ -1,0 +1,10 @@
+Package: fingerprinting.data.internal
+Type: Package
+Title: Fingerprinting Data (internal)
+Version: 0.1.0
+Authors@R: 
+    person("Isabella", "Grabski", , "igrabski@nygenome.org", role = c("aut", "cre"))
+Description: Data for RNA fingerprinting for internal use.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
