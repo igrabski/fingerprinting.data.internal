@@ -31,8 +31,8 @@
               'CD8.T.cell.immune.dictionary', 'cDC1.immune.dictionary',
               'cDC2.immune.dictionary', 'eTAC.immune.dictionary', 'ILC.immune.dictionary',
               'Ki67.T.cell.immune.dictionary', 'Langerhans.immune.dictionary',
-              'LEC.immune.dictionary', 'Macrophage.immune.dictionary', 
-              'Mast.cell.immune.dictionary', 'MigDC.immune.dictinary', 
+              'LEC.immune.dictionary', 'Macrophage.immune.dictionary',
+              'Mast.cell.immune.dictionary', 'MigDC.immune.dictinary',
               'Monocyte.immune.dictionary', 'NK.cell.immune.dictionary',
               'pDC.immune.dictionary', 'Treg.immune.dictionary',
               'gd.T.cell.immune.dictionary'),
@@ -71,22 +71,21 @@ AvailableData <- function() {
 }
 
 #' Install precomputed fingerprints
-#' 
+#'
 #' Installs requested precomputed fingerprints
-#' 
+#'
 #' @param name Name of dataset; see available datasets with AvailableData()
-#' 
+#'
 #' @return No return value; installs requested fingerprints
 #' @export
 InstallPrecomputedFingerprints <- function(name) {
   entry <- .registry[.registry$name == name, ]
   if (nrow(entry) == 0) stop("Unknown fingerprints: ", name)
-  if (!requireNamespace(entry$package, quietly = TRUE)) {
-    message("Installing ", name, " from GitHub release...")
-    remotes::install_url(entry$tarball)
-  } else {
-    message(name, " is already installed.")
+  if (requireNamespace(entry$package, quietly = TRUE)) {
+    message(name, " is already installed. Proceeding anyway...")
   }
+  message("Installing ", name, " from GitHub release...")
+  remotes::install_url(entry$tarball)
 }
 
 #' @keywords internal
@@ -98,14 +97,14 @@ count_numbered_datasets <- function(name, pkg, max_check = 100) {
     loaded <- suppressWarnings(utils::data(list = obj_name,
                                            package = pkg,
                                            envir = tmp_env))
-    
+
     if (obj_name %in% loaded && exists(obj_name, envir = tmp_env)) {
       count <- count + 1
     } else {
       break
     }
   }
-  
+
   if (count == 0) {
     obj_name <- paste0(name, "_fingerprints")
     tmp_env <- new.env()
@@ -116,7 +115,7 @@ count_numbered_datasets <- function(name, pkg, max_check = 100) {
       count <- 1
     }
   }
-  
+
   return(count)
 }
 
@@ -129,7 +128,6 @@ count_numbered_datasets <- function(name, pkg, max_check = 100) {
 #'
 #' @return A set of pre-computed fingerprints
 #'
-#' @importFrom fingerprinting.internal ConvertGenes
 #' @export
 #'
 #' @examples
@@ -154,11 +152,11 @@ LoadPrecomputedFingerprints <- function(
     stop("Fingerprints not installed. Use InstallPrecomputedFingerprints('", name, "') first.")
   }
   num <- count_numbered_datasets(name, pkg)
-  
+
   # Get fingerprints
   fingerprints_comps <- lapply(1:num, function(i) {
     comp <- if (num == 1) paste0(name, "_fingerprints") else paste0(name, "_fingerprints", i)
-    suppressWarnings(data(comp, package = pkg))
+    suppressWarnings(data(list = comp, package = pkg))
     get(comp)
   })
   fingerprints_Lambdas <- do.call(
@@ -173,27 +171,27 @@ LoadPrecomputedFingerprints <- function(
     Lambdas = fingerprints_Lambdas,
     dists = fingerprints_dists
   )
-  
+
   # Get order
   hc_name <- paste0(name,"_hc")
-  suppressWarnings(data(hc_name, package = pkg))
+  suppressWarnings(data(list = hc_name, package = pkg))
   hc <- get(hc_name)
-  
+
   # Get pseudobulked data
   data_comps <- lapply(1:num,function(i) {
     comp <- if (num == 1) paste0(name, "_data") else paste0(name, "_data", i)
-    suppressWarnings(data(comp, package = pkg))
+    suppressWarnings(data(list = comp, package = pkg))
     get(comp)
   })
   data <- do.call(
     cbind, lapply(1:num,function(i)
       data_comps[[i]])
   )
-  
+
   data <- CreateSeuratObject(counts = data)
   data <- SetAssayData(data, layer = 'scale.data',
                        new.data = GetAssayData(data, layer = 'counts'))
-  
+
   # Put into dictionary object
   dictionary <- structure(
     list(
@@ -203,14 +201,73 @@ LoadPrecomputedFingerprints <- function(
     ),
     class = "dictionary"
   )
-  
+
   if (gene_key != 'ENSEMBL') {
-    dictionary <- fingerprinting.internal::ConvertGenes(
+    dictionary <- ConvertGenes(
       dictionary,
       from = 'ENSEMBL',
       to = gene_key
     )
   }
-  
+
   return(dictionary)
+}
+
+#' Convert genes
+#'
+#' Convert genes in a fingerprints object
+#'
+#' @param fingerprints Fingerprints obtained from LearnDictionary()
+#' @param from Key type to convert from (default 'ENSEMBL')
+#' @param to Key type to convert to (default 'SYMBOL')
+#'
+#' @return Fingerprints with re-named genes; genes that couldn't be converted are dropped
+#'
+#' @import org.Hs.eg.db
+#' @importFrom AnnotationDbi mapIds
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' fingerprints <- ConvertGenes(
+#' fingerprints
+#' )
+#' }
+#'
+ConvertGenes <- function(
+    fingerprints,
+    from='ENSEMBL',
+    to='SYMBOL'
+) {
+  # Convert genes
+  genes <- mapIds(
+    org.Hs.eg.db,
+    keys = rownames(fingerprints$fingerprints$Lambdas),
+    keytype = from,
+    column = to
+  )
+  to_keep <- which(!is.na(genes) & !duplicated(genes))
+
+  # Rename
+  rownames(fingerprints$fingerprints$Lambdas) <- genes
+  fingerprints$fingerprints$Lambdas <- fingerprints$fingerprints$Lambdas[to_keep,]
+  for (p in 1:length(fingerprints$fingerprints$dists)) {
+    rownames(fingerprints$fingerprints$dists[[p]]) <- genes
+    fingerprints$fingerprints$dists[[p]] <- fingerprints$fingerprints$dists[[p]][to_keep,]
+  }
+
+  if (!is.null(fingerprints$data)) {
+    genes <- mapIds(
+      org.Hs.eg.db,
+      keys = rownames(fingerprints$data),
+      keytype = from,
+      column = to
+    )
+    to_keep <- which(!is.na(genes) & !duplicated(genes))
+    rownames(fingerprints$data) <- genes
+    fingerprints$data <- fingerprints$data[to_keep, ]
+  }
+
+  return(fingerprints)
 }

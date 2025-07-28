@@ -1,1 +1,7 @@
 exportPattern("^[[:alpha:]]+")
+export("AvailableData")
+export("InstallPrecomputedFingerprints")
+export("LoadPrecomputedFingerprints")
+export("ConvertGenes")
+import(org.Hs.eg.db)
+importFrom(AnnotationDbi,mapIds)

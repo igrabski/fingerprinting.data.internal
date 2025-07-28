@@ -9,7 +9,8 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports:
-    fingerprinting.internal
+    org.Hs.eg.db,
+    AnnotationDbi
 Depends: 
     R (>= 2.10)
 RoxygenNote: 7.2.3
