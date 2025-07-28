@@ -36,6 +36,9 @@
               'Monocyte.immune.dictionary', 'NK.cell.immune.dictionary',
               'pDC.immune.dictionary', 'Treg.immune.dictionary',
               'gd.T.cell.immune.dictionary'),
+  gene_key = c('ENSEMBL', 'SYMBOL', 'SYMBOL', 'SYMBOL', 'SYMBOL', 'SYMBOL', 'SYMBOL',
+               'SYMBOL', 'SYMBOL', 'SYMBOL', 'SYMBOL', 'SYMBOL', 'SYMBOL', 'SYMBOL',
+               'SYMBOL', 'SYMBOL', 'SYMBOL', 'SYMBOL', 'SYMBOL'),
   tarball = c('https://github.com/igrabski/fingerprinting.data.internal/releases/download/v1.0.0/gwps_0.0.0.9000.tar.gz',
               'https://github.com/igrabski/fingerprinting.data.internal/releases/download/v1.0.0/B.cell.immune.dictionary_0.0.0.9000.tar.gz',
               'https://github.com/igrabski/fingerprinting.data.internal/releases/download/v1.0.0/CD4.T.cell.immune.dictionary_0.0.0.9000.tar.gz',
@@ -70,17 +73,17 @@ AvailableData <- function() {
   print(data_info, row.names = FALSE)
 }
 
-#' Install precomputed fingerprints
+#' Install precomputed dictionary
 #'
-#' Installs requested precomputed fingerprints
+#' Installs requested precomputed dictionary
 #'
 #' @param name Name of dataset; see available datasets with AvailableData()
 #'
-#' @return No return value; installs requested fingerprints
+#' @return No return value; installs requested dictionary
 #' @export
-InstallPrecomputedFingerprints <- function(name) {
+InstallPrecomputedDictionary <- function(name) {
   entry <- .registry[.registry$name == name, ]
-  if (nrow(entry) == 0) stop("Unknown fingerprints: ", name)
+  if (nrow(entry) == 0) stop("Unknown dictionary: ", name)
   if (requireNamespace(entry$package, quietly = TRUE)) {
     message(name, " is already installed. Proceeding anyway...")
   }
@@ -119,44 +122,45 @@ count_numbered_datasets <- function(name, pkg, max_check = 100) {
   return(count)
 }
 
-#' Load pre-computed fingerprints
+#' Load pre-computed dictionary
 #'
-#' Load in pre-computed fingerprints.
+#' Load in pre-computed dictionary.
 #'
-#' @param name Name of pre-computed fingerprints
-#' @param gene_key Formatting of genes (default ENSEMBL); ignored for mouse datasets
+#' @param name Name of pre-computed dictionary
+#' @param gene_key Optional gene key to convert to (default NULL); only human annotations supported
 #'
-#' @return A set of pre-computed fingerprints
+#' @return A set of pre-computed dictionary
 #'
 #' @importFrom SeuratObject CreateSeuratObject
 #' @importFrom SeuratObject SetAssayData
+#' @importFrom SeuratObject GetAssayData
 #'
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' gwps_fingerprints <- LoadPrecomputedFingerprints(
+#' gwps_dictionary <- LoadPrecomputedDictionary(
 #' name = 'gwps'
 #' )
 #'
-#' gwps_fingerprints <- LoadPrecomputedFingerprints(
+#' gwps_dictionary <- LoadPrecomputedDictionary(
 #' name = 'gwps',
 #' gene_key = 'SYMBOL'
 #' )
 #' }
 #'
-LoadPrecomputedFingerprints <- function(
+LoadPrecomputedDictionary <- function(
     name,
-    gene_key = 'ENSEMBL'
+    gene_key = NULL
 ) {
   # Check for package
   pkg <- .registry$package[.registry$name == name]
   if (!requireNamespace(pkg, quietly = TRUE)) {
-    stop("Fingerprints not installed. Use InstallPrecomputedFingerprints('", name, "') first.")
+    stop("Dictionary not installed. Use InstallPrecomputedDictionary('", name, "') first.")
   }
   num <- count_numbered_datasets(name, pkg)
 
-  # Get fingerprints
+  # Get dictionary
   fingerprints_comps <- lapply(1:num, function(i) {
     comp <- if (num == 1) paste0(name, "_fingerprints") else paste0(name, "_fingerprints", i)
     suppressWarnings(data(list = comp, package = pkg))
@@ -205,10 +209,10 @@ LoadPrecomputedFingerprints <- function(
     class = "dictionary"
   )
 
-  if (gene_key != 'ENSEMBL') {
+  if (!is.null(gene_key)) {
     dictionary <- ConvertGenes(
       dictionary,
-      from = 'ENSEMBL',
+      from = .registry$gene_key[.registry$name == name],
       to = gene_key
     )
   }
@@ -218,13 +222,13 @@ LoadPrecomputedFingerprints <- function(
 
 #' Convert genes
 #'
-#' Convert genes in a fingerprints object
+#' Convert genes in a dictionary object
 #'
-#' @param fingerprints Fingerprints obtained from LearnDictionary()
+#' @param dictionary Dictionary obtained from LearnDictionary()
 #' @param from Key type to convert from (default 'ENSEMBL')
 #' @param to Key type to convert to (default 'SYMBOL')
 #'
-#' @return Fingerprints with re-named genes; genes that couldn't be converted are dropped
+#' @return Dictionary with re-named genes; genes that couldn't be converted are dropped
 #'
 #' @import org.Hs.eg.db
 #' @importFrom AnnotationDbi mapIds
@@ -233,44 +237,44 @@ LoadPrecomputedFingerprints <- function(
 #'
 #' @examples
 #' \dontrun{
-#' fingerprints <- ConvertGenes(
-#' fingerprints
+#' dictionary <- ConvertGenes(
+#' dictionary
 #' )
 #' }
 #'
 ConvertGenes <- function(
-    fingerprints,
+    dictionary,
     from='ENSEMBL',
     to='SYMBOL'
 ) {
   # Convert genes
   genes <- mapIds(
     org.Hs.eg.db,
-    keys = rownames(fingerprints$fingerprints$Lambdas),
+    keys = rownames(dictionary$fingerprints$Lambdas),
     keytype = from,
     column = to
   )
   to_keep <- which(!is.na(genes) & !duplicated(genes))
 
   # Rename
-  rownames(fingerprints$fingerprints$Lambdas) <- genes
-  fingerprints$fingerprints$Lambdas <- fingerprints$fingerprints$Lambdas[to_keep,]
-  for (p in 1:length(fingerprints$fingerprints$dists)) {
-    rownames(fingerprints$fingerprints$dists[[p]]) <- genes
-    fingerprints$fingerprints$dists[[p]] <- fingerprints$fingerprints$dists[[p]][to_keep,]
+  rownames(dictionary$fingerprints$Lambdas) <- genes
+  dictionary$fingerprints$Lambdas <- dictionary$fingerprints$Lambdas[to_keep,]
+  for (p in 1:length(dictionary$fingerprints$dists)) {
+    rownames(dictionary$fingerprints$dists[[p]]) <- genes
+    dictionary$fingerprints$dists[[p]] <- dictionary$fingerprints$dists[[p]][to_keep,]
   }
 
-  if (!is.null(fingerprints$data)) {
+  if (!is.null(dictionary$data)) {
     genes <- mapIds(
       org.Hs.eg.db,
-      keys = rownames(fingerprints$data),
+      keys = rownames(dictionary$data),
       keytype = from,
       column = to
     )
     to_keep <- which(!is.na(genes) & !duplicated(genes))
-    rownames(fingerprints$data) <- genes
-    fingerprints$data <- fingerprints$data[to_keep, ]
+    rownames(dictionary$data) <- genes
+    dictionary$data <- dictionary$data[to_keep, ]
   }
 
-  return(fingerprints)
+  return(dictionary)
 }

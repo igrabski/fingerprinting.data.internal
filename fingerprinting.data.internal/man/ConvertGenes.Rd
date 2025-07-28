@@ -4,25 +4,25 @@
 \alias{ConvertGenes}
 \title{Convert genes}
 \usage{
-ConvertGenes(fingerprints, from = "ENSEMBL", to = "SYMBOL")
+ConvertGenes(dictionary, from = "ENSEMBL", to = "SYMBOL")
 }
 \arguments{
-\item{fingerprints}{Fingerprints obtained from LearnDictionary()}
+\item{dictionary}{Dictionary obtained from LearnDictionary()}
 
 \item{from}{Key type to convert from (default 'ENSEMBL')}
 
 \item{to}{Key type to convert to (default 'SYMBOL')}
 }
 \value{
-Fingerprints with re-named genes; genes that couldn't be converted are dropped
+Dictionary with re-named genes; genes that couldn't be converted are dropped
 }
 \description{
-Convert genes in a fingerprints object
+Convert genes in a dictionary object
 }
 \examples{
 \dontrun{
-fingerprints <- ConvertGenes(
-fingerprints
+dictionary <- ConvertGenes(
+dictionary
 )
 }
 
