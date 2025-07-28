@@ -128,6 +128,9 @@ count_numbered_datasets <- function(name, pkg, max_check = 100) {
 #'
 #' @return A set of pre-computed fingerprints
 #'
+#' @importFrom SeuratObject CreateSeuratObject
+#' @importFrom SeuratObject SetAssayData
+#'
 #' @export
 #'
 #' @examples

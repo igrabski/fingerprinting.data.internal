@@ -10,7 +10,8 @@ Encoding: UTF-8
 LazyData: true
 Imports:
     org.Hs.eg.db,
-    AnnotationDbi
+    AnnotationDbi,
+    SeuratObject
 Depends: 
     R (>= 2.10)
 RoxygenNote: 7.2.3
