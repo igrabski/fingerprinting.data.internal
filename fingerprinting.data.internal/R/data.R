@@ -161,10 +161,11 @@ LoadPrecomputedDictionary <- function(
   num <- count_numbered_datasets(name, pkg)
 
   # Get dictionary
+  tmpenv <- new.env()
   fingerprints_comps <- lapply(1:num, function(i) {
     comp <- if (num == 1) paste0(name, "_fingerprints") else paste0(name, "_fingerprints", i)
-    suppressWarnings(data(list = comp, package = pkg))
-    get(comp)
+    suppressWarnings(data(list = comp, package = pkg, envir = tmpenv))
+    get(comp, envir = tmpenv)
   })
   fingerprints_Lambdas <- do.call(
     cbind, lapply(1:num,function(i)
@@ -181,14 +182,14 @@ LoadPrecomputedDictionary <- function(
 
   # Get order
   hc_name <- paste0(name,"_hc")
-  suppressWarnings(data(list = hc_name, package = pkg))
-  hc <- get(hc_name)
+  suppressWarnings(data(list = hc_name, package = pkg, envir = tmpenv))
+  hc <- get(hc_name, envir = tmpenv)
 
   # Get pseudobulked data
   data_comps <- lapply(1:num,function(i) {
     comp <- if (num == 1) paste0(name, "_data") else paste0(name, "_data", i)
-    suppressWarnings(data(list = comp, package = pkg))
-    get(comp)
+    suppressWarnings(data(list = comp, package = pkg, envir = tmpenv))
+    get(comp, envir = tmpenv)
   })
   data <- do.call(
     cbind, lapply(1:num,function(i)
