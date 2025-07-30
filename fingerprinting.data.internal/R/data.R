@@ -61,13 +61,13 @@
   stringsAsFactors = FALSE
 )
 
-#' List available datasets
+#' List available precomputed dictionaries
 #'
-#' Returns a table of dataset names and descriptions
+#' Returns a table of dictionary names and descriptions
 #'
 #' @return A data frame with columns \code{name} and \code{description}
 #' @export
-AvailableData <- function() {
+AvailableDictionaries <- function() {
   data_info <- .registry[,c('name','description')]
 
   print(data_info, row.names = FALSE)

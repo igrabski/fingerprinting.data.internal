@@ -1,5 +1,5 @@
 exportPattern("^[[:alpha:]]+")
-export("AvailableData")
+export("AvailableDictionaries")
 export("InstallPrecomputedDictionary")
 export("LoadPrecomputedDictionary")
 export("ConvertGenes")
